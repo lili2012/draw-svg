@@ -131,9 +131,13 @@ private:
 	// rasterize a point
 	void rasterize_point(float x, float y, Color color);
 
+	void rasterize_line1(float x0f, float y0f, float x1f, float y1f, Color color);
+
+	void rasterize_line2(float x0f, float y0f, float x1f, float y1f, Color color);
+
 	// rasterize a line
-	void rasterize_line(float x0, float y0,
-		float x1, float y1,
+	void rasterize_line(float x0f, float y0f,
+		float x1f, float y1f,
 		Color color);
 
 	// rasterize a triangle

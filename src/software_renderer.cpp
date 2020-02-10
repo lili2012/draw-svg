@@ -16,7 +16,10 @@ namespace CS248 {
 
 // fill a sample location with color
 void SoftwareRendererImp::fill_sample(int sx, int sy, const Color &color) {
-
+  render_target[4 * (sx + sy * target_w)] = (uint8_t)(color.r * 255);
+  render_target[4 * (sx + sy * target_w) + 1] = (uint8_t)(color.g * 255);
+  render_target[4 * (sx + sy * target_w) + 2] = (uint8_t)(color.b * 255);
+  render_target[4 * (sx + sy * target_w) + 3] = (uint8_t)(color.a * 255);
 }
 
 // fill samples in the entire pixel specified by pixel coordinates
@@ -253,29 +256,104 @@ void SoftwareRendererImp::draw_group( Group& group ) {
 void SoftwareRendererImp::rasterize_point( float x, float y, Color color ) {
 
   // fill in the nearest pixel
-  int sx = (int)floor(x);
-  int sy = (int)floor(y);
-
+  //int sx = (int)floor(x);
+  //int sy = (int)floor(y);
+  int sx = (int)x;
+  int sy = (int)y;
   // check bounds
   if (sx < 0 || sx >= target_w) return;
   if (sy < 0 || sy >= target_h) return;
 
   // fill sample - NOT doing alpha blending!
   // TODO: Call fill_pixel here to run alpha blending
-  render_target[4 * (sx + sy * target_w)] = (uint8_t)(color.r * 255);
-  render_target[4 * (sx + sy * target_w) + 1] = (uint8_t)(color.g * 255);
-  render_target[4 * (sx + sy * target_w) + 2] = (uint8_t)(color.b * 255);
-  render_target[4 * (sx + sy * target_w) + 3] = (uint8_t)(color.a * 255);
-
+  fill_sample(sx, sy, color);
 }
 
-void SoftwareRendererImp::rasterize_line( float x0, float y0,
-                                          float x1, float y1,
+void SoftwareRendererImp::rasterize_line1(float x0f, float y0f,
+  float x1f, float y1f,
+  Color color) {
+  int x0 = (int)x0f;
+  int y0 = (int)y0f;
+  int x1 = (int)x1f;
+  int y1 = (int)y1f;
+  int dy = y1 - y0;
+  int dx = x1 - x0;
+  float t = 0.0f;
+  if (abs(dx) > abs(dy)) {
+    float m = (float)dy / (float)dx;
+    t = y0;
+    dx = (dx < 0) ? -1 : 1;
+    m *= dx;
+    while (x0 != x1) {
+      fill_sample(x0, (int)t, color);
+      x0 += dx;
+      t += m;
+    }
+  }
+  else {
+    float m = (float)dx / (float)dy;
+    t = x0;
+    dy = (dy < 0) ? -1 : 1;
+    m *= dy;
+    while (y0 != y1) {
+      fill_sample((int)t, y0, color);
+      y0 += dy;
+      t += m;
+    }
+  }
+}
+
+void SoftwareRendererImp::rasterize_line2(float x0f, float y0f,
+  float x1f, float y1f,
+  Color color) {
+  int x0 = (int)x0f;
+  int y0 = (int)y0f;
+  int x1 = (int)x1f;
+  int y1 = (int)y1f;
+  int dy = y1 - y0;
+  int dx = x1 - x0;
+  int stepx = 1;
+  int stepy = 1;
+  if (dy < 0) {
+    dy = -dy;
+    stepy = -1;
+  }
+  if (dx < 0) {
+    dx = -dx;
+    stepx = -1;
+  }
+  int fraction = 0;
+  if (dx > dy) {
+    while (x0 != x1) {
+      fill_sample(x0, y0, color);
+      if (fraction >= dx) {
+        y0 += stepy;
+        fraction -= dx;
+      }
+      x0 += stepx;
+      fraction += dy;
+    }
+  }
+  else {
+    while (y0 != y1) {
+      fill_sample(x0, y0, color);
+      if (fraction >= dy) {
+        x0 += stepx;
+        fraction -= dy;
+      }
+      y0 += stepy;
+      fraction += dx;
+    }
+
+
+  }
+}
+
+void SoftwareRendererImp::rasterize_line( float x0f, float y0f,
+                                          float x1f, float y1f,
                                           Color color) {
-
-  // Extra credit (delete the line below and implement your own)
-  ref->rasterize_line_helper(x0, y0, x1, y1, target_w, target_h, color, this);
-
+  rasterize_line1(x0f, y0f, x1f, y1f, color);
+  rasterize_line2(x0f, y0f, x1f, y1f, color);
 }
 
 void SoftwareRendererImp::rasterize_triangle( float x0, float y0,
