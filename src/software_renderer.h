@@ -140,7 +140,9 @@ private:
 
 	void rasterize_lineCPP(int x0, int y0, int x1, int y1, Color color);
 
-	// rasterize a line
+  void rasterize_line5(int x1, int y1, int x2, int y2, Color color);
+
+  // rasterize a line
 	void rasterize_line(float x0, float y0,
 		float x1, float y1,
 		Color color);

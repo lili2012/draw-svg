@@ -19,6 +19,7 @@ namespace CS248 {
     static std::chrono::duration<double> elapsed_seconds2;
     static std::chrono::duration<double> elapsed_secondsC;
     static std::chrono::duration<double> elapsed_secondsCPP;
+    static std::chrono::duration<double> elapsed_seconds5;
 // Implements SoftwareRenderer //
 
 // fill a sample location with color
@@ -30,6 +31,7 @@ void SoftwareRendererImp::fill_sample(int sx, int sy, const Color &color) {
   render_target[start + 3] = (uint8_t)(color.a * 255);
 }
 
+//sx = sx * 4; sy = sy * target_w * 4;
 void SoftwareRendererImp::fill_sample2(int sx, int sy, const Color& color) {
     int start = sx + sy;
     render_target[start] = (uint8_t)(color.r * 255);
@@ -435,45 +437,94 @@ void SoftwareRendererImp::rasterize_lineCPP(int x1, int y1, int x2, int y2, Colo
     }
 }
 
+typedef 
+union
+{
+  int32_t i;
+  struct
+  {
+    int16_t lo; // endian-specific!
+    int16_t hi;
+  };
+} fixed_point;
+
+void SoftwareRendererImp::rasterize_line5(int x1, int y1, int x2, int y2, Color color) {
+
+  int dy = y2 - y1;
+  int dx = x2 - x1;
+ 
+  fixed_point t = {0};
+  if (abs(dx) > abs(dy)) {
+    int32_t m = ((int32_t)dy << 16) / dx; // slope as fixed point
+    t.i = y1 << 16;
+    dx = (dx < 0) ? -1 : 1;
+    m *= dx;
+    while (x1 != x2) {
+      fill_sample(x1, t.hi, color);
+      x1 += dx;
+      t.i += m;
+    }
+  }
+  else {
+    int32_t m = ((int32_t)dx << 16) / dy; // slope as fixed point
+    t.i = x1 << 16;
+    dy = (dy < 0) ? -1 : 1;
+    m *= dy;
+    while (y1 != y2) {
+      fill_sample(t.hi, y1, color);
+      y1 += dy;
+      t.i += m;
+    }
+  }
+}
+
 void SoftwareRendererImp::rasterize_line( float x0f, float y0f,
                                           float x1f, float y1f,
                                           Color color) {
     
-    short count = 1000000;
-
-    auto start = ::std::chrono::system_clock::now();
-
-    for (int i = 0; i < count; i++) {
-        rasterize_line1(x0f, y0f, x1f, y1f, color);
-    }
-    auto end = std::chrono::system_clock::now();
-    elapsed_seconds1 += (end - start);
-
-    start = std::chrono::system_clock::now();
-    for (int i = 0; i < count; i++) {
-        rasterize_line2(x0f, y0f, x1f, y1f, color);
-    }
-    end = std::chrono::system_clock::now();
-    elapsed_seconds2 += (end - start);
-    
-    start = std::chrono::system_clock::now();
-    for (int i = 0; i < count; i++) {
-        rasterize_lineC(x0f, y0f, x1f, y1f, color);
-    }
-    end = std::chrono::system_clock::now();
-    elapsed_secondsC += (end - start);
-
-    start = std::chrono::system_clock::now();
-    for (int i = 0; i < count; i++) {
-        rasterize_lineCPP(x0f, y0f, x1f, y1f, color);
-    }
-    end = std::chrono::system_clock::now();
-    elapsed_secondsCPP += (end - start);
-
-    ::std::cout << "elapsed time1: " << elapsed_seconds1.count() << endl;
-    ::std::cout << "elapsed time2: " << elapsed_seconds2.count() << endl;
-    ::std::cout << "elapsed timeC: " << elapsed_secondsC.count() << endl;
-    ::std::cout << "elapsed timeCPP: " << elapsed_secondsCPP.count() << endl;
+//     short count = 1000000;
+// 
+//     auto start = ::std::chrono::system_clock::now();
+// 
+//     for (int i = 0; i < count; i++) {
+//         rasterize_line1(x0f, y0f, x1f, y1f, color);
+//     }
+//     auto end = std::chrono::system_clock::now();
+//     elapsed_seconds1 += (end - start);
+// 
+//     start = std::chrono::system_clock::now();
+//     for (int i = 0; i < count; i++) {
+//         rasterize_line2(x0f, y0f, x1f, y1f, color);
+//     }
+//     end = std::chrono::system_clock::now();
+//     elapsed_seconds2 += (end - start);
+//     
+//     start = std::chrono::system_clock::now();
+//     for (int i = 0; i < count; i++) {
+//         rasterize_lineC(x0f, y0f, x1f, y1f, color);
+//     }
+//     end = std::chrono::system_clock::now();
+//     elapsed_secondsC += (end - start);
+// 
+//     start = std::chrono::system_clock::now();
+//     for (int i = 0; i < count; i++) {
+//         rasterize_lineCPP(x0f, y0f, x1f, y1f, color);
+//     }
+//     end = std::chrono::system_clock::now();
+//     elapsed_secondsCPP += (end - start);
+// 
+//     start = std::chrono::system_clock::now();
+//     for (int i = 0; i < count; i++) {
+      rasterize_line5(x0f, y0f, x1f, y1f, color);
+//     }
+//     end = std::chrono::system_clock::now();
+//     elapsed_seconds5 += (end - start);
+// 
+//     ::std::cout << "elapsed time1: " << elapsed_seconds1.count() << endl;
+//     ::std::cout << "elapsed time2: " << elapsed_seconds2.count() << endl;
+//     ::std::cout << "elapsed timeC: " << elapsed_secondsC.count() << endl;
+//     ::std::cout << "elapsed timeCPP: " << elapsed_secondsCPP.count() << endl;
+//     ::std::cout << "elapsed time5: " << elapsed_seconds5.count() << endl;
 }
 
 void SoftwareRendererImp::rasterize_triangle( float x0, float y0,
