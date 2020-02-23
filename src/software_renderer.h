@@ -93,6 +93,7 @@ public:
 
 	std::vector<unsigned char> sample_buffer; int w; int h;
 	void fill_sample(int sx, int sy, const Color& color);
+	void fill_sample2(int sx, int sy, const Color& color);
 	void fill_pixel(int x, int y, const Color& color);
 
 private:
@@ -130,6 +131,14 @@ private:
 
 	// rasterize a point
 	void rasterize_point(float x, float y, Color color);
+
+	void rasterize_line1(float x0f, float y0f, float x1f, float y1f, Color color);
+
+	void rasterize_line2(float x0f, float y0f, float x1f, float y1f, Color color);
+
+	void rasterize_lineC(int x0, int y0, int x1, int y1, Color color);
+
+	void rasterize_lineCPP(int x0, int y0, int x1, int y1, Color color);
 
 	// rasterize a line
 	void rasterize_line(float x0, float y0,

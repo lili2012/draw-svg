@@ -4,19 +4,38 @@
 #include <vector>
 #include <iostream>
 #include <algorithm>
-
+#include <iostream>
+#include <time.h> 
+#include <stdio.h> 
+#include <chrono>
+#include <ctime>
 #include "triangulation.h"
 
 using namespace std;
 
 namespace CS248 {
 
-
+    static std::chrono::duration<double> elapsed_seconds1;
+    static std::chrono::duration<double> elapsed_seconds2;
+    static std::chrono::duration<double> elapsed_secondsC;
+    static std::chrono::duration<double> elapsed_secondsCPP;
 // Implements SoftwareRenderer //
 
 // fill a sample location with color
 void SoftwareRendererImp::fill_sample(int sx, int sy, const Color &color) {
+    int start = 4 * (sx + sy * target_w);
+  render_target[start] = (uint8_t)(color.r * 255);
+  render_target[start + 1] = (uint8_t)(color.g * 255);
+  render_target[start + 2] = (uint8_t)(color.b * 255);
+  render_target[start + 3] = (uint8_t)(color.a * 255);
+}
 
+void SoftwareRendererImp::fill_sample2(int sx, int sy, const Color& color) {
+    int start = sx + sy;
+    render_target[start] = (uint8_t)(color.r * 255);
+    render_target[start + 1] = (uint8_t)(color.g * 255);
+    render_target[start + 2] = (uint8_t)(color.b * 255);
+    render_target[start + 3] = (uint8_t)(color.a * 255);
 }
 
 // fill samples in the entire pixel specified by pixel coordinates
@@ -253,29 +272,208 @@ void SoftwareRendererImp::draw_group( Group& group ) {
 void SoftwareRendererImp::rasterize_point( float x, float y, Color color ) {
 
   // fill in the nearest pixel
-  int sx = (int)floor(x);
-  int sy = (int)floor(y);
-
+  //int sx = (int)floor(x);
+  //int sy = (int)floor(y);
+  int sx = (int)x;
+  int sy = (int)y;
   // check bounds
   if (sx < 0 || sx >= target_w) return;
   if (sy < 0 || sy >= target_h) return;
 
   // fill sample - NOT doing alpha blending!
   // TODO: Call fill_pixel here to run alpha blending
-  render_target[4 * (sx + sy * target_w)] = (uint8_t)(color.r * 255);
-  render_target[4 * (sx + sy * target_w) + 1] = (uint8_t)(color.g * 255);
-  render_target[4 * (sx + sy * target_w) + 2] = (uint8_t)(color.b * 255);
-  render_target[4 * (sx + sy * target_w) + 3] = (uint8_t)(color.a * 255);
-
+  fill_sample(sx, sy, color);
 }
 
-void SoftwareRendererImp::rasterize_line( float x0, float y0,
-                                          float x1, float y1,
+void SoftwareRendererImp::rasterize_line1(float x0f, float y0f,
+  float x1f, float y1f,
+  Color color) {
+  int x0 = (int)x0f;
+  int y0 = (int)y0f;
+  int x1 = (int)x1f;
+  int y1 = (int)y1f;
+  int dy = y1 - y0;
+  int dx = x1 - x0;
+  float t = 0.0f;
+  if (abs(dx) > abs(dy)) {
+    float m = (float)dy / (float)dx;
+    t = y0;
+    dx = (dx < 0) ? -1 : 1;
+    m *= dx;
+    while (x0 != x1) {
+      fill_sample(x0, (int)t, color);
+      x0 += dx;
+      t += m;
+    }
+  }
+  else {
+    float m = (float)dx / (float)dy;
+    t = x0;
+    dy = (dy < 0) ? -1 : 1;
+    m *= dy;
+    while (y0 != y1) {
+      fill_sample((int)t, y0, color);
+      y0 += dy;
+      t += m;
+    }
+  }
+}
+
+void SoftwareRendererImp::rasterize_line2(float x0f, float y0f,
+  float x1f, float y1f,
+  Color color) {
+  int x0 = (int)x0f;
+  int y0 = (int)y0f ;
+  int x1 = (int)x1f;
+  int y1 = (int)y1f ;
+  int dy = y1 - y0;
+  int dx = x1 - x0;
+  int stepx = 4;
+  int stepy =  target_w<<2;
+  if (dy < 0) {
+    dy = -dy;
+    stepy = -stepy;
+  }
+  if (dx < 0) {
+    dx = -dx;
+    stepx = -stepx;
+  }
+
+  x0 <<= 2;
+  x1 <<= 2;
+  y0 *=  target_w*4;
+  y1 *= target_w *4;
+
+  //int start = 4 * (sx + sy * target_w);
+  if (dx > dy) {
+    int fraction = -dx;
+    while (x0 != x1) {
+      fill_sample2(x0, y0, color);
+      //int advance = fraction / dx;
+      
+      if (fraction >= 0) {
+        y0 += stepy;
+        fraction -= dx;
+      }
+      x0 += stepx;
+      fraction += dy;
+    }
+  }
+  else {
+    int fraction = -dy;
+    while (y0 != y1) {
+      fill_sample2(x0, y0, color);
+      //int advance = fraction / dy;
+      
+      if (fraction >= 0) {
+        x0 += stepx;
+        fraction -= dy;
+      }
+      y0 += stepy;
+      fraction += dx;
+    }
+  }
+}
+
+void SoftwareRendererImp::rasterize_lineC(int x0, int y0, int x1, int y1, Color color) {
+    
+    int dx = abs(x1 - x0), sx = x0 < x1 ? 1 : -1;
+    int dy = abs(y1 - y0), sy = y0 < y1 ? 1 : -1;
+    int err = (dx > dy ? dx : -dy) / 2, e2;
+
+    for (;;) {
+        fill_sample(x0, y0, color);
+        if (x0 == x1 && y0 == y1) break;
+        e2 = err;
+        if (e2 > -dx) { err -= dy; x0 += sx; }
+        if (e2 < dy) { err += dx; y0 += sy; }
+    }
+}
+
+void SoftwareRendererImp::rasterize_lineCPP(int x1, int y1, int x2, int y2, Color color) {
+
+    // Bresenham's line algorithm
+    const bool steep = (fabs(y2 - y1) > fabs(x2 - x1));
+    if (steep)
+    {
+        std::swap(x1, y1);
+        std::swap(x2, y2);
+    }
+
+    if (x1 > x2)
+    {
+        std::swap(x1, x2);
+        std::swap(y1, y2);
+    }
+
+    const float dx = x2 - x1;
+    const float dy = fabs(y2 - y1);
+
+    float error = dx / 2.0f;
+    const int ystep = (y1 < y2) ? 1 : -1;
+    int y = (int)y1;
+
+    const int maxX = (int)x2;
+
+    for (int x = (int)x1; x <= maxX; x++)
+    {
+        if (steep)
+        {
+            fill_sample(y, x, color);
+        }
+        else
+        {
+            fill_sample(x, y, color);
+        }
+
+        error -= dy;
+        if (error < 0)
+        {
+            y += ystep;
+            error += dx;
+        }
+    }
+}
+
+void SoftwareRendererImp::rasterize_line( float x0f, float y0f,
+                                          float x1f, float y1f,
                                           Color color) {
+    
+    short count = 1000000;
 
-  // Extra credit (delete the line below and implement your own)
-  ref->rasterize_line_helper(x0, y0, x1, y1, target_w, target_h, color, this);
+    auto start = ::std::chrono::system_clock::now();
 
+    for (int i = 0; i < count; i++) {
+        rasterize_line1(x0f, y0f, x1f, y1f, color);
+    }
+    auto end = std::chrono::system_clock::now();
+    elapsed_seconds1 += (end - start);
+
+    start = std::chrono::system_clock::now();
+    for (int i = 0; i < count; i++) {
+        rasterize_line2(x0f, y0f, x1f, y1f, color);
+    }
+    end = std::chrono::system_clock::now();
+    elapsed_seconds2 += (end - start);
+    
+    start = std::chrono::system_clock::now();
+    for (int i = 0; i < count; i++) {
+        rasterize_lineC(x0f, y0f, x1f, y1f, color);
+    }
+    end = std::chrono::system_clock::now();
+    elapsed_secondsC += (end - start);
+
+    start = std::chrono::system_clock::now();
+    for (int i = 0; i < count; i++) {
+        rasterize_lineCPP(x0f, y0f, x1f, y1f, color);
+    }
+    end = std::chrono::system_clock::now();
+    elapsed_secondsCPP += (end - start);
+
+    ::std::cout << "elapsed time1: " << elapsed_seconds1.count() << endl;
+    ::std::cout << "elapsed time2: " << elapsed_seconds2.count() << endl;
+    ::std::cout << "elapsed timeC: " << elapsed_secondsC.count() << endl;
+    ::std::cout << "elapsed timeCPP: " << elapsed_secondsCPP.count() << endl;
 }
 
 void SoftwareRendererImp::rasterize_triangle( float x0, float y0,
