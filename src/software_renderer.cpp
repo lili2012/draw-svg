@@ -10,6 +10,7 @@
 #include <chrono>
 #include <ctime>
 #include "triangulation.h"
+#include <cassert>
 
 using namespace std;
 
@@ -531,6 +532,9 @@ void SoftwareRendererImp::rasterize_triangle( float x0, float y0,
                                               float x1, float y1,
                                               float x2, float y2,
                                               Color color ) {
+    Vector2D v1(x1 - x0, y1 - y0);
+    Vector2D v2(x2 - x1, y2 - y1);
+    assert(cross(v1, v2) > 0);
   // Task 1: 
   // Implement triangle rasterization (you may want to call fill_sample here)
 
