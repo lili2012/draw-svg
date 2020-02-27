@@ -11,7 +11,7 @@
 #include <ctime>
 #include "triangulation.h"
 #include <cassert>
-
+#include <array>
 using namespace std;
 
 namespace CS248 {
@@ -528,13 +528,41 @@ void SoftwareRendererImp::rasterize_line( float x0f, float y0f,
 //     ::std::cout << "elapsed time5: " << elapsed_seconds5.count() << endl;
 }
 
+struct Point2D{
+    float x;
+    float y;
+};
+
+static bool cmp(const Point2D& a, const Point2D& b)
+{
+    return (a.y < b.y || (a.y == b.y && a.x > b.x));
+}
+
 void SoftwareRendererImp::rasterize_triangle( float x0, float y0,
                                               float x1, float y1,
                                               float x2, float y2,
                                               Color color ) {
-    Vector2D v1(x1 - x0, y1 - y0);
-    Vector2D v2(x2 - x1, y2 - y1);
-    assert(cross(v1, v2) > 0);
+    //zigzag
+    Vector2D v0((double)x1 - x0, (double)y1 - y0);
+    Vector2D v1((double)x2 - x1, (double)y2 - y1);
+
+    if (cross(v0, v1) > 0) {
+        v0 = -v0;
+        swap(x0, x1);
+        swap(y0, y1);
+    }
+    Vector2D v2 = -(v1 + v0);
+    //find top-left point
+    Point2D p0{ x0, y0 };
+    Point2D p1{ x1, y1 };
+    Point2D p2{ x2, y2 };
+    std::array<Point2D, 3> pts{ p0,p1, p2 };
+    Point2D pt = *max_element(pts.begin(), pts.end(), cmp);
+    auto xbound = std::minmax({x0,x1,x2});
+    auto ybound = std::minmax({ y0,y1,y2 });
+
+
+
   // Task 1: 
   // Implement triangle rasterization (you may want to call fill_sample here)
 
