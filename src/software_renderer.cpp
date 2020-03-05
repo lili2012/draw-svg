@@ -24,6 +24,15 @@ namespace CS248 {
   // Implements SoftwareRenderer //
 
   // fill a sample location with color
+  void SoftwareRendererImp::supersample_fill_sample(int sx, int sy, const Color& color) {
+    size_t start = 4 * (sx + sy * supersample_target_w);
+    supersample_target[start] = (uint8_t)(color.r * 255);
+    supersample_target[start + 1] = (uint8_t)(color.g * 255);
+    supersample_target[start + 2] = (uint8_t)(color.b * 255);
+    supersample_target[start + 3] = (uint8_t)(color.a * 255);
+  }
+
+  // fill a sample location with color
   void SoftwareRendererImp::fill_sample(int sx, int sy, const Color& color) {
     size_t start = 4 * (sx + sy * target_w);
     render_target[start] = (uint8_t)(color.r * 255);
@@ -93,22 +102,24 @@ namespace CS248 {
   }
 
   void SoftwareRendererImp::set_sample_rate(size_t sample_rate) {
-
-    // Task 2: 
-    // You may want to modify this for supersampling support
     this->sample_rate = sample_rate;
-
+    supersampling();
   }
+
+  void SoftwareRendererImp::supersampling() {
+    supersample_target_w = target_w * sample_rate;
+    supersample_target_h = target_h * sample_rate;
+    supersample_framebuffer.resize(4 * supersample_target_w * supersample_target_h);
+    this->supersample_target = &supersample_framebuffer[0];
+  }
+
 
   void SoftwareRendererImp::set_render_target(unsigned char* render_target,
     size_t width, size_t height) {
-
-    // Task 2: 
-    // You may want to modify this for supersampling support
     this->render_target = render_target;
     this->target_w = width;
     this->target_h = height;
-
+    supersampling();
   }
 
   void SoftwareRendererImp::draw_element(SVGElement* element) {
@@ -275,8 +286,6 @@ namespace CS248 {
   void SoftwareRendererImp::rasterize_point(float x, float y, Color color) {
 
     // fill in the nearest pixel
-    //int sx = (int)floor(x);
-    //int sy = (int)floor(y);
     int sx = (int)x;
     int sy = (int)y;
     // check bounds
@@ -560,8 +569,9 @@ namespace CS248 {
     Vector2D v2 = -(v1 + v0);
     auto xbound = std::minmax({ x0,x1,x2 });
     auto ybound = std::minmax({ y0,y1,y2 });
-    float starty = static_cast<int>(ybound.first) + 0.5;
-    float startx = static_cast<int>(xbound.first) + 0.5;
+    float frac = 1.0 / sample_rate / 2;
+    float starty = static_cast<int>(ybound.first) + frac;
+    float startx = static_cast<int>(xbound.first) + frac;
     float A0 = v0.y;
     float B0 = -v0.x;
     float C0 = y0 * v0.x - x0 * v0.y;
@@ -577,21 +587,22 @@ namespace CS248 {
     float L0 = A0 * startx + B0 * starty + C0;
     float L1 = A1 * startx + B1 * starty + C1;
     float L2 = A2 * startx + B2 * starty + C2;
-    for (float y = starty; y <= round_down(ybound.second); y += 1) {
+    float inc = 1.0 / sample_rate;
+    for (float y = starty; y <= ceil(ybound.second); y += inc) {
       float L0_y = L0;
       float L1_y = L1;
       float L2_y = L2;
-      for (float x = startx; x <= round_down(xbound.second); x += 1) {
+      for (float x = startx; x <= ceil(xbound.second); x += inc) {
         if (L0_y <= 0 && L1_y <= 0 && L2_y <= 0) {
-          fill_sample(x, y, color);
+          supersample_fill_sample(x / inc, y / inc, color);
         }
-        L0_y += A0;
-        L1_y += A1;
-        L2_y += A2;
+        L0_y += A0 / sample_rate;
+        L1_y += A1 / sample_rate;
+        L2_y += A2 / sample_rate;
       }
-      L0 += B0;
-      L1 += B1;
-      L2 += B2;
+      L0 += B0 / sample_rate;
+      L1 += B1 / sample_rate;
+      L2 += B2 / sample_rate;
     }
   }
 
@@ -605,12 +616,31 @@ namespace CS248 {
 
   // resolve samples to render target
   void SoftwareRendererImp::resolve(void) {
+    for (size_t i = 0; i < target_h; i++) {
+      for (size_t j = 0; j < target_w; j++) {
+        short sum_r = 0;
+        short sum_g = 0;
+        short sum_b = 0;
+        short sum_a = 0;
+        int index =4*(j + i * target_w);
+        for (size_t m = 0; m < sample_rate; m++) {
+          for (size_t n = 0; n < sample_rate; n++) {
+            int sample = 4 * ((j * sample_rate + m) + (i * sample_rate + n) * supersample_target_w);
+            sum_r += supersample_target[sample];
+            sum_g += supersample_target[sample + 1];
+            sum_b += supersample_target[sample + 2];
+            sum_a += supersample_target[sample + 3];
+          }
+        }
 
-    // Task 2: 
-    // Implement supersampling
-    // You may also need to modify other functions marked with "Task 2".
-    return;
+        render_target[index] += (sum_r/ sample_rate/ sample_rate);
+        render_target[index + 1] += (sum_g / sample_rate / sample_rate);
+        render_target[index + 2] += (sum_b / sample_rate / sample_rate);
+        render_target[index + 3] += (sum_a / sample_rate / sample_rate);
 
+      }
+    }
+    memset(supersample_target, 255, 4 * supersample_target_w * supersample_target_h);
   }
 
 

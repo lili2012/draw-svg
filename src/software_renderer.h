@@ -63,7 +63,6 @@ class SoftwareRenderer : public SVGRenderer {
 
   // Render target memory location
   unsigned char* render_target; 
-
   // Target buffer dimension (in pixels)
   size_t target_w; size_t target_h;
 
@@ -87,11 +86,14 @@ public:
 	// set sample rate
 	void set_sample_rate(size_t sample_rate);
 
+	void supersampling();
+
 	// set render target
 	void set_render_target(unsigned char* target_buffer,
 		size_t width, size_t height);
 
 	std::vector<unsigned char> sample_buffer; int w; int h;
+	void supersample_fill_sample(int sx, int sy, const Color& color);
 	void fill_sample(int sx, int sy, const Color& color);
 	void fill_sample2(int sx, int sy, const Color& color);
 	void fill_pixel(int x, int y, const Color& color);
@@ -162,6 +164,11 @@ private:
 	void resolve(void);
 
 	SoftwareRendererRef *ref;
+
+	unsigned char* supersample_target;
+	std::vector<unsigned char> supersample_framebuffer;
+	// Supersample target buffer dimension (in pixels)
+	size_t supersample_target_w; size_t supersample_target_h;
 }; // class SoftwareRendererImp
 
 
