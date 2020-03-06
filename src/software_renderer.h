@@ -13,6 +13,7 @@
 #include "CS248.h"
 #include "texture.h"
 #include "svg_renderer.h"
+#include <stack>
 
 namespace CS248 { // CS248
 
@@ -169,6 +170,7 @@ private:
 	std::vector<unsigned char> supersample_framebuffer;
 	// Supersample target buffer dimension (in pixels)
 	size_t supersample_target_w; size_t supersample_target_h;
+	std::stack<Matrix3x3> transformations;
 }; // class SoftwareRendererImp
 
 
