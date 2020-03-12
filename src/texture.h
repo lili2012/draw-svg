@@ -68,7 +68,9 @@ class Sampler2DImp : public Sampler2D {
                        float u, float v, 
                        int level = 0);
 
-  Color sample_bilinear(Texture& tex, 
+  Color getColor(Texture& tex, int x, int y);
+
+  Color sample_bilinear(Texture& tex,
                         float u, float v, 
                         int level = 0);
 
@@ -98,6 +100,8 @@ class Sampler2DRef : public Sampler2D {
                          float u_scale, float v_scale);
   
 }; // class sampler2DRef
+
+void getIndex(float x, int width);
 
 } // namespace CS248
 

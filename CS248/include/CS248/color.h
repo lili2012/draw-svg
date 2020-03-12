@@ -49,8 +49,18 @@ class Color {
     return Color( r + rhs.r, g + rhs.g, b + rhs.b, a + rhs.a);
   }
 
+  // Addition. Alpha is ignored.
+  inline Color operator-(const Color& rhs) const {
+    return Color(r - rhs.r, g - rhs.g, b - rhs.b, a - rhs.a);
+  }
+
   inline Color& operator+=( const Color& rhs ) {
     r += rhs.r; g += rhs.g; b += rhs.b; a += rhs.a;
+    return *this;
+  }
+
+  inline Color& operator-=(const Color& rhs) {
+    r -= rhs.r; g -= rhs.g; b -= rhs.b; a -= rhs.a;
     return *this;
   }
 

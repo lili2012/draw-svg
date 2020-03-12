@@ -25,6 +25,9 @@ namespace CS248 {
 
   // fill a sample location with color
   void SoftwareRendererImp::supersample_fill_sample(int sx, int sy, const Color& color) {
+    // check bounds
+    if (sx < 0 || sx >= supersample_target_w) return;
+    if (sy < 0 || sy >= supersample_target_h) return;
     size_t start = 4 * (sx + sy * supersample_target_w);
     supersample_target[start] = (uint8_t)(color.r * 255);
     supersample_target[start + 1] = (uint8_t)(color.g * 255);
@@ -34,6 +37,8 @@ namespace CS248 {
 
   // fill a sample location with color
   void SoftwareRendererImp::fill_sample(int sx, int sy, const Color& color) {
+    if (sx < 0 || sx >= target_w) return;
+    if (sy < 0 || sy >= target_h) return;
     size_t start = 4 * (sx + sy * target_w);
     render_target[start] = (uint8_t)(color.r * 255);
     render_target[start + 1] = (uint8_t)(color.g * 255);
@@ -43,6 +48,8 @@ namespace CS248 {
 
   //sx = sx * 4; sy = sy * target_w * 4;
   void SoftwareRendererImp::fill_sample2(int sx, int sy, const Color& color) {
+    if (sx < 0 || sx >= target_w) return;
+    if (sy < 0 || sy >= target_h) return;
     int start = sx + sy;
     render_target[start] = (uint8_t)(color.r * 255);
     render_target[start + 1] = (uint8_t)(color.g * 255);
@@ -448,7 +455,7 @@ namespace CS248 {
   } fixed_point;
 
   void SoftwareRendererImp::rasterize_line5(int x1, int y1, int x2, int y2, Color color) {
-
+    //ref->rasterize_line_helper(x1, y1, x2, y2, target_w, target_h, color, this);
     int dy = y2 - y1;
     int dx = x2 - x1;
 
@@ -595,12 +602,45 @@ namespace CS248 {
     }
   }
 
+  static inline float alignStart(float start, float frac) {
+    float startv = int(start) + frac / 2;
+    if (startv < start) {
+      float diff = start - startv;
+      int n = ceil(diff / frac);
+      startv += n * frac;
+    }
+    return startv;
+  }
+
+  static inline float alignEnd(float end, float frac) {
+    float endv = ceil(end) - frac / 2;
+    if (endv > end) {
+      float diff = endv - end;
+      int n = ceil(diff / frac);
+      endv -= n * frac;
+    }
+    return endv;
+  }
+
   void SoftwareRendererImp::rasterize_image(float x0, float y0,
     float x1, float y1,
     Texture& tex) {
-    // Task 4: 
-    // Implement image rasterization (you may want to call fill_sample here)
 
+    float frac = 1.0 / sample_rate;
+    float startx = alignStart(x0, frac);
+    float endx = alignEnd(x1, frac);
+
+    float starty = alignStart(y0, frac);
+    float endy = alignEnd(y1, frac);
+
+    float width = x1 - x0;
+    float height = y1 - y0;
+    for (float y = starty; y <= endy; y+=frac) {
+      for (float x = startx; x <= endx; x += frac) {
+        Color color = sampler->sample_bilinear(tex, (x-x0) / width, (y-y0) / height);
+        supersample_fill_sample(x, y, color);
+      }
+    }
   }
 
   // resolve samples to render target

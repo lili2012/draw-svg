@@ -82,22 +82,78 @@ Color Sampler2DImp::sample_nearest(Texture& tex,
                                    float u, float v, 
                                    int level) {
 
-  // Task 4: Implement nearest neighbour interpolation
-  
-  // return magenta for invalid level
-  return Color(1,0,1,1);
+  MipLevel& mip = tex.mipmap[0];
+  int width = mip.width;
+  int height = mip.height;
+  int x = u * width;
+  if (x == width) {
+    x = width - 1;
+  }
+  int y = v * height;
+  if (y == height) {
+    y = height - 1;
+  }
+
+  int start = 4 * (y * mip.width + x);
+  Color color;
+  uint8_to_float(&color.r, &(mip.texels[start]));
+  return color;
 
 }
 
-Color Sampler2DImp::sample_bilinear(Texture& tex, 
+static void getIndex(float v, int length, int& floor, int& ceil)
+{
+  if (v < 0.5) {
+    floor = 0;
+    ceil = 0;
+  }
+  else if (v >(length - 0.5)) {
+    floor = length - 1;
+    ceil = length - 1;
+  }
+  else {
+    floor = static_cast<int>(v - 0.5);
+    ceil = floor + 1;
+  }
+}
+static Color lerp(float s, Color v1, Color v2) {
+  return v1 + s * (v2 - v1);
+}
+
+Color Sampler2DImp::getColor(Texture& tex, int x, int y) {
+  MipLevel& mip = tex.mipmap[0];
+  int width = mip.width;
+  int height = mip.height;
+  int index = 4 * (y * mip.width + x);
+  Color color;
+  uint8_to_float(&color.r, &(mip.texels[index]));
+  return color;
+}
+Color Sampler2DImp::sample_bilinear(Texture& tex,
                                     float u, float v, 
                                     int level) {
+  MipLevel& mip = tex.mipmap[0];
+  int width = mip.width;
+  int height = mip.height;
+  float x = u * width;
+  float y = v * height;
+  int floorX;
+  int ceilX;
+  getIndex(x, width, floorX, ceilX);
+  int floorY;
+  int ceilY;
+  getIndex(y, height, floorY, ceilY);
   
-  // Task 4: Implement bilinear filtering
+  Color topLeft= getColor(tex, floorX, floorY);
+  Color topRight = getColor(tex, ceilX, floorY);
+  Color bottomLeft = getColor(tex, floorX, ceilY);
+  Color bottomRight = getColor(tex, ceilX, ceilY);
 
-  // return magenta for invalid level
-  return Color(1,0,1,1);
-
+  float sx = x - (floorX + 0.5);
+  Color colorUp = lerp(sx, topLeft, topRight);
+  Color colorDown = lerp(sx, bottomLeft, bottomRight);
+  float sy = y - (floorY + 0.5);
+  return lerp(sy, colorUp, colorDown);
 }
 
 Color Sampler2DImp::sample_trilinear(Texture& tex, 

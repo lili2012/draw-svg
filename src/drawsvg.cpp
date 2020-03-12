@@ -283,7 +283,7 @@ void DrawSVG::scroll_event( float offset_x, float offset_y ) {
 
 	// prevent inverting axis when scrolling too fast
     float scale = 1 + 0.05 * offset_x + 0.05 * offset_y;
-    scale = scale < 0.5 ? 0.5 : (scale > 1.5 ? 1.5 : scale); 
+    scale = scale < 0.5 ? 0.5 : (scale > 1.5 ? 1.5 : scale);
     viewport_imp[current_tab]->update_viewbox(0, 0, scale);
     viewport_ref[current_tab]->update_viewbox(0, 0, scale);
     redraw();
@@ -297,7 +297,7 @@ void DrawSVG::clear( void ) {
   }
 
   if( method == Software ) {
-    software_renderer->clear_target();    
+    software_renderer->clear_target();
   }
 }
 
