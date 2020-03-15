@@ -79,8 +79,17 @@ class Color {
     return Color( r * s, g * s, b * s, a * s );
   }
 
+  inline Color operator/(float s) const {
+    return Color(r / s, g / s, b / s, a / s);
+  }
+
   inline Color& operator*=( float s ) {
     r *= s; g *= s; b *= s; a *= s;
+    return *this;
+  }
+
+  inline Color& operator/=(float s) {
+    r /= s; g /= s; b /= s; a /= s;
     return *this;
   }
 

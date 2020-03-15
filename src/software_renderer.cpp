@@ -485,6 +485,45 @@ namespace CS248 {
     }
   }
 
+  void SoftwareRendererImp::rasterize_line_Wu(int x1, int y1, int x2, int y2, Color color) {
+    //ref->rasterize_line_helper(x1, y1, x2, y2, target_w, target_h, color, this);
+    int dy = y2 - y1;
+    int dx = x2 - x1;
+    const fixed_point half = { ((int32_t)1 << 16) / 2 };
+    fixed_point t = { 0 };
+    if (abs(dx) > abs(dy)) {
+      int32_t m = ((int32_t)dy << 16) / dx; // slope as fixed point
+      t.i = y1 << 16;
+      dx = (dx < 0) ? -1 : 1;
+      m *= dx;
+      while (x1 != x2) {
+        fixed_point lowY = { t.i - half.i };
+        fixed_point hiY = { t.i + half.i };
+        lowY.lo = 0;//floor
+        lowY.i += half.i;
+        fixed_point propotion = { t.i - lowY.i };
+
+        Color hiColor = color * propotion.i / (1 << 16);
+
+        fill_pixel(x1, lowY.hi, hiColor);
+        fill_pixel(x1, hiY.hi, color - hiColor);
+        x1 += dx;
+        t.i += m;
+      }
+    }
+    else {
+      if (dy == 0) return;
+      int32_t m = ((int32_t)dx << 16) / dy; // slope as fixed point
+      t.i = x1 << 16;
+      dy = (dy < 0) ? -1 : 1;
+      m *= dy;
+      while (y1 != y2) {
+        fill_pixel(t.hi, y1, color);
+        y1 += dy;
+        t.i += m;
+      }
+    }
+  }
   void SoftwareRendererImp::rasterize_line(float x0f, float y0f,
     float x1f, float y1f,
     Color color) {
